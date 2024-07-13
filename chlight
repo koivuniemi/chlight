@@ -33,7 +33,12 @@ if [[ $1 == "-h" || $1 == "--help" ]]; then
     echo "Usage: $BNAME [index|name] [max|brightness]"
     echo "Examples:"
     echo -e "\t$BNAME       | list devices | (index) (device_name) (brightness) (max_brightness)"
+    echo -e "\t0  asus::kbd_backlight  0      3"
+    echo -e "\t1  intel_backlight      10000  19200"
+    echo
     echo -e "\t$BNAME 0     | list index 0 device info"
+    echo -e "\tasus::kbd_backlight 0 3"
+    echo
     echo -e "\t$BNAME 1 3   | index 1 device changed to brightness 3"
     echo -e "\t$BNAME kbd m | device with 'kbd' in its name changed to max_brightness"
     exit
