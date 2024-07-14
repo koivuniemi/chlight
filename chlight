@@ -126,7 +126,7 @@ fi
 
 MAX_BRIGHTNESS=$(cat $dir/max_brightness)
 if [[ $VAL =~ ^[0-9]+$ && $VAL -ge 0 ]]; then
-    if [[ $bness -gt $MAX_BRIGHTNESS ]]; then
+    if [[ $VAL -gt $MAX_BRIGHTNESS ]]; then
         VAL=$MAX_BRIGHTNESS
     fi
 elif [[ $VAL == "m" || $VAL == "max" ]]; then
