@@ -18,3 +18,11 @@ Examples:
         chlight 1 3     | Index 1 device changed to brightness 3
         chlight kbd m   | Device with 'kbd' in its name changed to max_brightness
 ```
+## INSTALLATION
+
+```
+git clone https://www.github.com/koivuniemi/chlight.git
+cd chlight
+chmod +x chlight
+sudo cp chlight /usr/bin/
+```
