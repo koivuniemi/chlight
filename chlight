@@ -28,77 +28,106 @@
 # ================================================================================
 
 
-if [[ $1 == "-h" || $1 == "--help" ]]; then
+flag_h=false
+flag_v=false
+
+commands=()
+for arg in $@; do
+    if [[ $arg == "-h" || $arg == "--help" ]]; then
+        flag_h=true
+    elif [[ $arg == "-v" ]]; then
+        flag_v=true
+    else
+        commands+=($arg)
+    fi
+done
+ID=${commands[0]}
+VAL=${commands[1]}
+
+
+if $flag_h; then
     BNAME=$(basename -- $0)
-    echo "Usage: $BNAME [index|name] [max|brightness]"
+    echo "Usage: $BNAME [OPTION] [index|name] [max|brightness]"
+    echo "Options:"
+    echo -e "\t-h --help\t| Displays this information"
+    echo -e "\t-v\t\t| Verbose"
     echo "Examples:"
-    echo -e "\t$BNAME       | list devices | (index) (device_name) (brightness) (max_brightness)"
+    echo -e "\t$BNAME\t\t| List devices | (index) (device_name) (brightness) (max_brightness)"
     echo -e "\t0  asus::kbd_backlight  0      3"
     echo -e "\t1  intel_backlight      10000  19200"
     echo
-    echo -e "\t$BNAME 0     | list index 0 device info"
+    echo -e "\t$BNAME 0\t| List index 0 device info"
     echo -e "\tasus::kbd_backlight 0 3"
     echo
-    echo -e "\t$BNAME 1 3   | index 1 device changed to brightness 3"
-    echo -e "\t$BNAME kbd m | device with 'kbd' in its name changed to max_brightness"
+    echo -e "\t$BNAME 1 3\t| Index 1 device changed to brightness 3"
+    echo -e "\t$BNAME kbd m\t| Device with 'kbd' in its name changed to max_brightness"
     exit
 fi
 
 
-DIRECTORIES=$(sudo find /sys/devices -name *backlight)
-DIRS=()
-for dir in $DIRECTORIES; do
-    if [[ -f $dir/britghtness || -f $dir/max_brightness ]]; then
-        DIRS+=($dir)
-    fi
-done
+DIRS=($(dirname $(sudo find /sys/devices -type f -name "brightness")))
 
 
 if [[ -z $DIRS ]]; then
-    echo "no devices with modifiable brightness"
+    echo "No devices with modifiable brightness"
     exit
-elif [[ -z $1 ]]; then
+fi
+if [[ -z $ID ]]; then
     str=''
-    for i in ${!DIRS[@]}; do
-        str+="$i $(basename -- ${DIRS[i]}) $(cat ${DIRS[i]}/brightness) $(cat ${DIRS[i]}/max_brightness)\n"
-    done
+    if $flag_v; then
+        for i in ${!DIRS[@]}; do
+            str+="$i ${DIRS[i]} $(cat ${DIRS[i]}/brightness) $(cat ${DIRS[i]}/max_brightness)\n"
+        done
+    else
+        for i in ${!DIRS[@]}; do
+            str+="$i $(basename -- ${DIRS[i]}) $(cat ${DIRS[i]}/brightness) $(cat ${DIRS[i]}/max_brightness)\n"
+        done
+    fi
     echo -e $str | column -t
     exit
 fi
 
+
 dir=''
-if [[ $1 =~ ^[0-9]+$ ]]; then
-    dir=${DIRS[$1]}
+if [[ $ID =~ ^[0-9]+$ ]]; then
+    dir=${DIRS[$ID]}
 else
     for file in ${DIRS[@]}; do
-        if [[ $(basename -- $file) =~ $1 ]]; then
+        if [[ $(basename -- $file) =~ $ID ]]; then
             dir=$file
             break
         fi
     done
 fi
+
+
 if [[ -z $dir ]]; then
-    echo "no matching option: $1"
+    echo "No matching option: $1"
     exit
 fi
-if [[ -z $2 ]]; then
-    echo "$(basename -- $dir) $(cat $dir/brightness) $(cat $dir/max_brightness)"
+if [[ -z $VAL ]]; then
+    if $flag_v; then
+        echo "$dir $(cat $dir/brightness) $(cat $dir/max_brightness)"
+    else
+        echo "$(basename -- $dir) $(cat $dir/brightness) $(cat $dir/max_brightness)"
+    fi
     exit
 fi
 
 
 MAX_BRIGHTNESS=$(cat $dir/max_brightness)
-brightness=''
-if [[ $2 =~ ^[0-9]+$ && $2 -ge 0 ]]; then
-    brightness=$2
-    if [[ $brightness -gt $MAX_BRIGHTNESS ]]; then
-        brightness=$MAX_BRIGHTNESS
+if [[ $VAL =~ ^[0-9]+$ && $VAL -ge 0 ]]; then
+    if [[ $bness -gt $MAX_BRIGHTNESS ]]; then
+        VAL=$MAX_BRIGHTNESS
     fi
-elif [[ $2 == "m" || $2 == "max" ]]; then
-    brightness=$MAX_BRIGHTNESS
+elif [[ $VAL == "m" || $VAL == "max" ]]; then
+    VAL=$MAX_BRIGHTNESS
 else
-    echo "incorrect parameter: $2"
+    echo "Incorrect second parameter: $VAL"
     exit
 fi
 
-sudo su -c "echo $brightness > $dir/brightness"
+if $flag_v; then
+    echo -e "sudo su -c \"echo $VAL > $dir/brightness\""
+fi
+sudo su -c "echo $VAL > $dir/brightness"
