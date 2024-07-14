@@ -21,7 +21,7 @@ Examples:
 ## INSTALLATION
 
 ```
-git clone https://www.github.com/koivuniemi/chlight.git
+git clone https://github.com/koivuniemi/chlight.git
 cd chlight
 chmod +x chlight
 sudo cp chlight /usr/bin/
