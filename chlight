@@ -28,12 +28,15 @@
 # ================================================================================
 
 
+flag_a=false
 flag_h=false
 flag_v=false
 
 commands=()
 for arg in $@; do
-    if [[ $arg == "-h" || $arg == "--help" ]]; then
+    if [[ $arg == "-a" ]]; then
+        flag_a=true
+    elif [[ $arg == "-h" || $arg == "--help" ]]; then
         flag_h=true
     elif [[ $arg == "-v" ]]; then
         flag_v=true
@@ -49,10 +52,11 @@ if $flag_h; then
     BNAME=$(basename -- $0)
     echo "Usage: $BNAME [OPTION] [index|name] [max|brightness]"
     echo "Options:"
+    echo -e "\t-a\t\t| Additional devices (default is only backlight devices)"
     echo -e "\t-h --help\t| Displays this information"
     echo -e "\t-v\t\t| Verbose"
     echo "Examples:"
-    echo -e "\t$BNAME\t\t| List devices | (index) (device_name) (brightness) (max_brightness)"
+    echo -e "\t$BNAME\t\t| List devices | (index) (device) (brightness) (max_brightness)"
     echo -e "\t0  asus::kbd_backlight  0      3"
     echo -e "\t1  intel_backlight      10000  19200"
     echo
@@ -65,7 +69,12 @@ if $flag_h; then
 fi
 
 
-DIRS=($(dirname $(sudo find /sys/devices -type f -name "brightness")))
+DIRS=''
+if $flag_a; then
+    DIRS=($(dirname $(sudo find /sys/devices -type f -name "brightness")))
+else
+    DIRS=($(sudo find /sys/devices -type d -name "*light" -exec test -e '{}'/brightness \; -print))
+fi
 
 
 if [[ -z $DIRS ]]; then
