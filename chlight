@@ -76,15 +76,14 @@ if [[ -z $DIRS ]]; then
 fi
 if [[ -z $id ]]; then
     str=''
-    if $flag_v; then
-        for i in ${!DIRS[@]}; do
-            str+="$i ${DIRS[i]} $(cat ${DIRS[i]}/brightness) $(cat ${DIRS[i]}/max_brightness)\n"
-        done
-    else
-        for i in ${!DIRS[@]}; do
-            str+="$i $(basename -- ${DIRS[i]}) $(cat ${DIRS[i]}/brightness) $(cat ${DIRS[i]}/max_brightness)\n"
-        done
-    fi
+    for i in ${!DIRS[@]}; do
+        if $flag_v; then
+            name=${DIRS[i]}
+        else
+            name=$(basename -- ${DIRS[i]})
+        fi
+        str+="$i $name $(cat ${DIRS[i]}/brightness) $(cat ${DIRS[i]}/max_brightness)\n"
+    done
     echo -e $str | column -t
     exit
 fi
@@ -106,11 +105,12 @@ if [[ -z $dir ]]; then
     exit
 fi
 if [[ -z $val ]]; then
-    if $flag_v; then
-        echo "$dir $(cat $dir/brightness) $(cat $dir/max_brightness)"
+    if flag_v; then
+        name=$dir
     else
-        echo "$(basename -- $dir) $(cat $dir/brightness) $(cat $dir/max_brightness)"
+        name=$(basename -- $dir)
     fi
+    echo "$name $(cat $dir/brightness) $(cat $dir/max_brightness)"
     exit
 fi
 
@@ -125,8 +125,5 @@ elif [[ $val == "m" || $val == "max" ]]; then
 else
     echo "Incorrect second parameter: $val"
     exit
-fi
-if $flag_v; then
-    echo -e "sudo su -c \"echo $val > $dir/brightness\""
 fi
 sudo su -c "echo $val > $dir/brightness"
