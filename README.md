@@ -4,7 +4,7 @@
 ```
 Usage: chlight [OPTION] [index|name] [max|brightness]
 Options:
-        -a              | Additional devices (default is only backlight devices)
+        -a              | Additional devices (default shows backlight devices)
         -h --help       | Displays this information
         -v              | Verbose
 Examples:
