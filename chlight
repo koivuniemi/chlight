@@ -91,7 +91,7 @@ fi
 
 dir=''
 if [[ $id =~ ^[0-9]+$ ]]; then
-    dir=${DIRS[$id]}
+    dir=${DIRS[id]}
 else
     for file in ${DIRS[@]}; do
         if [[ $(basename -- $file) =~ $id ]]; then
