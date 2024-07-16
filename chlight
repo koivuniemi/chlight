@@ -31,21 +31,21 @@
 flag_a=false
 flag_h=false
 flag_v=false
-
 commands=()
 for arg in $@; do
-    if [[ $arg == "-a" ]]; then
-        flag_a=true
-    elif [[ $arg == "-h" || $arg == "--help" ]]; then
-        flag_h=true
-    elif [[ $arg == "-v" ]]; then
-        flag_v=true
-    else
-        commands+=($arg)
-    fi
+    case $arg in
+        -a)
+            flag_a=true;;
+        -h | --help)
+            flag_h=true;;
+        -v)
+            flag_v=true;;
+        *)
+            commands+=($arg);;
+    esac
 done
-ID=${commands[0]}
-VAL=${commands[1]}
+id=${commands[0]}
+val=${commands[1]}
 
 
 if $flag_h; then
@@ -57,12 +57,7 @@ if $flag_h; then
     echo -e "\t-v\t\t| Verbose"
     echo "Examples:"
     echo -e "\t$BNAME\t\t| List devices | (index) (device) (brightness) (max_brightness)"
-    echo -e "\t0  asus::kbd_backlight  0      3"
-    echo -e "\t1  intel_backlight      10000  19200"
-    echo
     echo -e "\t$BNAME 0\t| List index 0 device info"
-    echo -e "\tasus::kbd_backlight 0 3"
-    echo
     echo -e "\t$BNAME 1 3\t| Index 1 device changed to brightness 3"
     echo -e "\t$BNAME kbd m\t| Device with 'kbd' in its name changed to max_brightness"
     exit
@@ -75,13 +70,11 @@ if $flag_a; then
 else
     DIRS=($(sudo find /sys/devices -type d -name "*light" -exec test -e '{}'/brightness \; -print))
 fi
-
-
 if [[ -z $DIRS ]]; then
     echo "No devices with modifiable brightness"
     exit
 fi
-if [[ -z $ID ]]; then
+if [[ -z $id ]]; then
     str=''
     if $flag_v; then
         for i in ${!DIRS[@]}; do
@@ -98,23 +91,21 @@ fi
 
 
 dir=''
-if [[ $ID =~ ^[0-9]+$ ]]; then
-    dir=${DIRS[$ID]}
+if [[ $id =~ ^[0-9]+$ ]]; then
+    dir=${DIRS[$id]}
 else
     for file in ${DIRS[@]}; do
-        if [[ $(basename -- $file) =~ $ID ]]; then
+        if [[ $(basename -- $file) =~ $id ]]; then
             dir=$file
             break
         fi
     done
 fi
-
-
 if [[ -z $dir ]]; then
     echo "No matching option: $1"
     exit
 fi
-if [[ -z $VAL ]]; then
+if [[ -z $val ]]; then
     if $flag_v; then
         echo "$dir $(cat $dir/brightness) $(cat $dir/max_brightness)"
     else
@@ -125,18 +116,17 @@ fi
 
 
 MAX_BRIGHTNESS=$(cat $dir/max_brightness)
-if [[ $VAL =~ ^[0-9]+$ && $VAL -ge 0 ]]; then
-    if [[ $VAL -gt $MAX_BRIGHTNESS ]]; then
-        VAL=$MAX_BRIGHTNESS
+if [[ $val =~ ^[0-9]+$ && $val -ge 0 ]]; then
+    if [[ $val -gt $MAX_BRIGHTNESS ]]; then
+        val=$MAX_BRIGHTNESS
     fi
-elif [[ $VAL == "m" || $VAL == "max" ]]; then
-    VAL=$MAX_BRIGHTNESS
+elif [[ $val == "m" || $val == "max" ]]; then
+    val=$MAX_BRIGHTNESS
 else
-    echo "Incorrect second parameter: $VAL"
+    echo "Incorrect second parameter: $val"
     exit
 fi
-
 if $flag_v; then
-    echo -e "sudo su -c \"echo $VAL > $dir/brightness\""
+    echo -e "sudo su -c \"echo $val > $dir/brightness\""
 fi
-sudo su -c "echo $VAL > $dir/brightness"
+sudo su -c "echo $val > $dir/brightness"

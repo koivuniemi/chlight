@@ -24,5 +24,5 @@ Examples:
 git clone https://github.com/koivuniemi/chlight.git
 cd chlight
 chmod +x chlight
-sudo cp chlight /usr/bin/
+sudo cp chlight /usr/local/bin/
 ```
