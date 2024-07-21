@@ -11,12 +11,12 @@
 const char HELP[] =
 	"Usage: chlight [option] [index|name] [brightness|max]\n"
 	"Options:\n"
-	"\t-h --help     | Displays this information\n"
-	"\t-v            | Verbose\n"
+	"\t-h --help      | Displays this information\n"
+	"\t-v             | Verbose\n"
 	"Examples:\n"
-	"\tchlight       | List devices | index device brightness max_brightness\n"
-	"\tchlight 1 3   | Index 1 device changed to brightness 3\n"
-	"\tchlight kbd m | Device with 'kbd' in its name changed to max_brightness";
+	"\tchlight        | List devices | index device brightness max_brightness\n"
+	"\tchlight 1 1000 | Index 1 device changed to brightness 1000\n"
+	"\tchlight kbd 3  | Device with 'kbd' in its name changed to 3";
 
 
 enum flags {
