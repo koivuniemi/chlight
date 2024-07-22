@@ -284,18 +284,13 @@ int main(int argc, char** argv) {
 	}
 
 
-	file = fopen(bness_path, "r");
-	if (file == NULL) {
+	char* fdata = read_file_to_str(bness_path);
+	if (fdata == NULL) {
 		fprintf(stderr, "Failed to read (%s)\n", bness_path);
 		goto exit_error;
 	}
-	char fdata[100];
-	fread(fdata, 1, 100, file);
-	if (fclose(file)) {
-		fprintf(stderr, "Failed to close (%s)\n", bness_path);
-		goto exit_error;
-	}
 	printf("%s: %s", target_dev.basename, fdata);
+	free(fdata);
 
 
 	goto exit_success;
