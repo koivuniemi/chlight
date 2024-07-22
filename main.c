@@ -240,7 +240,7 @@ int main(int argc, char** argv) {
 
 
 	int id = strtol(args.id, NULL, 10);
-	char target_dev[PATH_MAX];
+	struct file target_dev;
 	if (id < 0 || id > devs_len) {
 		fprintf(stderr, "Id out of range\n");
 		goto exit_error;
@@ -255,10 +255,12 @@ int main(int argc, char** argv) {
 			fprintf(stderr, "Could not match with device name\n");
 			goto exit_error;
 		}
-		snprintf(target_dev, PATH_MAX, "%s/%s", devs[i].path, "brightness");
+		target_dev = devs[i];
 	} else {
-		snprintf(target_dev, PATH_MAX, "%s/%s", devs[id - 1].path, "brightness");
+		target_dev = devs[id - 1];
 	}
+	char bness_path[PATH_MAX];
+	snprintf(bness_path, PATH_MAX, "%s/%s", target_dev.path, "brightness");
 
 
 	uid_t euid = geteuid();
@@ -266,17 +268,34 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "Insufficient privileges\n");
 		goto exit_error;
 	}
-	FILE* file = fopen(target_dev, "w");
+	FILE* file = fopen(bness_path, "w");
 	if (file == NULL) {
-		fprintf(stderr, "Failed to write to (%s)\n", target_dev);
+		fprintf(stderr, "Failed to write to (%s)\n", bness_path);
 		goto exit_error;
 	}
 	fwrite(args.val, 1, strlen(args.val), file);
-	fclose(file);
+	if (fclose(file)) {
+		fprintf(stderr, "Failed to close (%s)\n", bness_path);
+		goto exit_error;
+	}
 	if (seteuid(euid)) {
 		fprintf(stderr, "Failed to drop user privileges\n");
 		goto exit_error;
 	}
+
+
+	file = fopen(bness_path, "r");
+	if (file == NULL) {
+		fprintf(stderr, "Failed to read (%s)\n", bness_path);
+		goto exit_error;
+	}
+	char fdata[100];
+	fread(fdata, 1, 100, file);
+	if (fclose(file)) {
+		fprintf(stderr, "Failed to close (%s)\n", bness_path);
+		goto exit_error;
+	}
+	printf("%s: %s", target_dev.basename, fdata);
 
 
 	goto exit_success;
