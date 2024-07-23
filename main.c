@@ -72,11 +72,9 @@ int args_create(struct args* args, const int argc, char** const argv) {
 	return 0;
 err_strdup_id:
 	fprintf(stderr, "Error: %s at strdup id", __func__);
-	goto cleanup;
+	return 1;
 err_strdup_val:
 	fprintf(stderr, "Error: %s at strdup val", __func__);
-	goto cleanup;
-cleanup:
 	return 1;
 }
 
@@ -149,8 +147,7 @@ int find_devices(struct file** devs) {
 	*devs = malloc(sizeof(**devs) * devs_cap);
 	if (devs == NULL)
 		goto err_malloc_devs;
-	char dirname[PATH_MAX];
-	strcpy(dirname, "/sys/devices");
+	char dirname[PATH_MAX] = "/sys/devices";
 	if (get_files(devs, &devs_cap, &devs_len, dirname))
 		goto err_get_files;
 	int bness_devs_len = 0;
