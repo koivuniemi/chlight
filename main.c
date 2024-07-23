@@ -31,6 +31,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#define BUFF_SIZE 200
 
 const char HELP[] =
 	"Usage: chlight [option] [index|name] [brightness|max]\n"
@@ -253,9 +254,7 @@ char* strtrimr(char* str) {
 void print_devs_info(struct file** const devs,
 					 const size_t devs_len,
 					 const struct args* const args) {
-	const size_t BUFF_SIZE = 200;
 	char buff[BUFF_SIZE];
-	size_t buff_len = 0;
 	int dname_strmaxlen = 0;
 	int bness_strmaxlen = 0;
 	for (size_t i = 0; i < devs_len; i++) {
@@ -365,8 +364,8 @@ int main(int argc, char** argv) {
 		goto err_seteuid_to_user;
 
 
-	char bness[200];
-	if (readfilenstr(bness, 200, bness_path) == -1)
+	char bness[BUFF_SIZE];
+	if (readfilenstr(bness, BUFF_SIZE, bness_path) == -1)
 		goto err_readfilen;
 	printf("%s: %s", target_dev.basename, bness);
 
