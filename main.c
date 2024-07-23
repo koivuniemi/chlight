@@ -31,6 +31,7 @@
 #include <string.h>
 #include <unistd.h>
 
+
 #define BUFF_SIZE 200
 
 const char HELP[] =
@@ -167,11 +168,8 @@ cleanup:
 }
 
 int find_devices(struct file** devs) {
-	size_t devs_cap = 100;
+	size_t devs_cap = 0;
 	size_t devs_len = 0;
-	*devs = malloc(sizeof(**devs) * devs_cap);
-	if (devs == NULL)
-		goto err_malloc_devs;
 	char dirname[PATH_MAX] = "/sys/devices";
 	if (get_files(devs, &devs_cap, &devs_len, dirname))
 		goto err_get_files;
