@@ -184,12 +184,6 @@ int find_devices(struct file** devs) {
 	if (*devs == NULL)
 		goto err_realloc;
 	return bness_devs_len;
-err_malloc_devs:
-	fprintf(stderr, "Error: %s at malloc devs\n", __func__);
-	goto cleanup;
-err_malloc_dirname:
-	fprintf(stderr, "Error: %s at malloc dirname\n", __func__);
-	goto cleanup;
 err_get_files:
 	fprintf(stderr, "Error: %s at get_files\n", __func__);
 	goto cleanup;
