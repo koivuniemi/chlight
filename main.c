@@ -217,7 +217,7 @@ err_fopen:
 	fprintf(stderr, "Error: %s at fopen\n", __func__);
 	goto cleanup;
 err_fseek:
-	fprintf(stderr, "Error: %s at fclose\n", __func__);
+	fprintf(stderr, "Error: %s at fseek\n", __func__);
 	goto cleanup;
 err_fclose:
 	fprintf(stderr, "Error: %s at fclose\n", __func__);
@@ -258,7 +258,7 @@ void print_devs_info(struct file** const devs,
 		char path[PATH_MAX];
 		snprintf(path, PATH_MAX, "%s/%s", (*devs)[i].path, "brightness");
 		if (readfilenstr(buff, BUFF_SIZE, path) == -1)
-			goto err_readfilen_strmaxlen;
+			goto err_readfilenstr_strmaxlen;
 		int bness_len = strlen(strtrimr(buff));
 		if (bness_strmaxlen < bness_len)
 			bness_strmaxlen = bness_len;
@@ -272,23 +272,23 @@ void print_devs_info(struct file** const devs,
 		char path[PATH_MAX];
 		snprintf(path, PATH_MAX, "%s/%s", (*devs)[i].path, "brightness");
 		if (readfilenstr(buff, BUFF_SIZE, path) == -1)
-			goto err_readfilen_bness;
+			goto err_readfilenstr_bness;
 		const char* const bness = strtrimr(buff);
 		printf("%-*s ", bness_strmaxlen, bness);
 		snprintf(path, PATH_MAX, "%s/%s", (*devs)[i].path, "max_brightness");
 		if (readfilenstr(buff, BUFF_SIZE, path) == -1)
-			goto err_readfilen_maxbness;
+			goto err_readfilenstr_maxbness;
 		const char* const maxbness = strtrimr(buff);
 		printf("%s\n", maxbness);
 	}
 	return;
-err_readfilen_strmaxlen:
+err_readfilenstr_strmaxlen:
 	fprintf(stderr, "Error: %s at strmaxlen\n", __func__);
 	return;
-err_readfilen_bness:
+err_readfilenstr_bness:
 	fprintf(stderr, "Error: %s at bness\n", __func__);
 	return;
-err_readfilen_maxbness:
+err_readfilenstr_maxbness:
 	fprintf(stderr, "Error: %s at maxbness\n", __func__);
 }
 
@@ -358,7 +358,7 @@ int main(int argc, char** argv) {
 
 	char bness[BUFF_SIZE];
 	if (readfilenstr(bness, BUFF_SIZE, bness_path) == -1)
-		goto err_readfilen;
+		goto err_readfilenstr;
 	printf("%s: %s", target_dev.basename, bness);
 
 
@@ -396,7 +396,7 @@ err_fclose:
 err_seteuid_to_user:
 	fprintf(stderr, "Failed to drop user privileges\n");
 	goto err_cleanup;
-err_readfilen:
+err_readfilenstr:
 	fprintf(stderr, "Failed to read (%s)\n", bness_path);
 	/* fall through */
 err_cleanup:
