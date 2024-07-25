@@ -12,7 +12,7 @@ Examples:
         chlight kbd 3  | Device with 'kbd' in its name changed to 3
 ```
 ## EXAMPLE
-![Example](usage_example.png =339x425)
+![Example](usage_example.png)
 ## INSTALLATION
 
 ```
