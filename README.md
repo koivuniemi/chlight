@@ -11,7 +11,8 @@ Examples:
         chlight 1 1000 | Index 1 device changed to brightness 1000
         chlight kbd 3  | Device with 'kbd' in its name changed to 3
 ```
-![Example](usage_example.png)
+## EXAMPLE
+![Example](usage_example.png =339x425)
 ## INSTALLATION
 
 ```
