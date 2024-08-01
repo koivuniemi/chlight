@@ -32,13 +32,13 @@
 #include <unistd.h>
 
 
-#define BUFF_SIZE 200
+#define BUFF_SIZE 4096
 
 const char HELP[] =
-	"Usage: chlight [option] [index|name] [brightness|max]\n"
+	"Usage: chlight [option] [index|name] [brightness]\n"
 	"Options:\n"
 	"\t-h --help      | Displays this information\n"
-	"\t-v             | Verbose\n"
+	"\t-v --verbose   | Verbose\n"
 	"Examples:\n"
 	"\tchlight        | List devices | index device brightness max_brightness\n"
 	"\tchlight 1 1000 | Index 1 device changed to brightness 1000\n"
@@ -56,70 +56,34 @@ struct args {
 	char* val;
 };
 
-struct file {
-	char* path;
-	char* basename;
-	char* filename;
-};
 
-
-void file_destroy(struct file* file) {
-	if (file->path != NULL) {
-		free(file->path);
-		file->path = NULL;
-	}
-	if (file->filename != NULL) {
-		free(file->filename);
-		file->path = NULL;
-	}
-}
-
-int args_create(struct args* args, const int argc, char** const argv) {
+void args_create(struct args* args, const int argc, char** const argv) {
 	args->flags = 0;
 	args->id = NULL;
 	args->val = NULL;
 	for (size_t i = 1; i < argc; i++) {
-		if (!strncmp("-h", argv[i], 2)) {
+		if (!strncmp("-h", argv[i], 2) || !strncmp("--help", argv[i], 6)) {
 			args->flags |= FLAG_H;
-		} else if (!strncmp("-v", argv[i], 2)) {
-			args->flags |= FLAG_V;
-		} else {
-			if (args->id == NULL) {
-				args->id = strdup(argv[i]);
-				if (args->id == NULL)
-					goto err_strdup_id;
-			} else if (args->val == NULL) {
-				args->val = strdup(argv[i]);
-				if (args->val == NULL)
-					goto err_strdup_val;
-			}
+			continue;
 		}
-	}
-	return 0;
-err_strdup_id:
-	fprintf(stderr, "Error: %s at strdup id", __func__);
-	return 1;
-err_strdup_val:
-	fprintf(stderr, "Error: %s at strdup val", __func__);
-	return 1;
-}
-
-void args_destroy(struct args* args) {
-	if (args->id != NULL) {
-		free(args->id);
-		args->id = NULL;
-	}
-	if (args->val != NULL) {
-		free(args->val);
-		args->val = NULL;
+		if (!strncmp("-v", argv[i], 2) || !strncmp("--verbose", argv[i], 9)) {
+			args->flags |= FLAG_V;
+			continue;
+		}
+		if (args->id == NULL)
+			args->id = argv[i];
+		else if (args->val == NULL)
+			args->val = argv[i];
 	}
 }
 
-int get_files(struct file** files, size_t* files_cap, size_t* files_len,
-			  char* dirname) {
+int get_devs(char** devs, int* devs_cap, int* devs_len, char* dirname) {
+	int ret = 1;
 	DIR* dir = opendir(dirname);
-	if (!dir)
-		goto err_opendir;
+	if (!dir) {
+		fprintf(stderr, "Error: %s at diropen\n", __func__);
+		goto out;
+	}
 	for (struct dirent* e = readdir(dir); e != NULL; e = readdir(dir)) {
 		if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, ".."))
 			continue;
@@ -127,108 +91,44 @@ int get_files(struct file** files, size_t* files_cap, size_t* files_len,
 			size_t dirname_oglen = strlen(dirname);
 			strcat(dirname, "/");
 			strcat(dirname, e->d_name);
-			if (get_files(files, files_cap, files_len, dirname))
-				goto err_get_files;
-			dirname[dirname_oglen] = '\0';
-		} else {
-			if (*files_len >= *files_cap) {
-				*files_cap += 100;
-				*files = realloc(*files, sizeof(**files) * *files_cap);
-				if (*files == NULL)
-					goto err_realloc_files;
+			if (get_devs(devs, devs_cap, devs_len, dirname)) {
+				fprintf(stderr, "Error: %s at get_file\n", __func__);
+				goto out;
 			}
-			(*files)[*files_len].path = strdup(dirname);
-			(*files)[*files_len].basename = basename((*files)[*files_len].path);
-			(*files)[*files_len].filename = strdup(e->d_name);
-			(*files_len)++;
+			dirname[dirname_oglen] = '\0';
+		} else if (strcmp(e->d_name, "brightness") == 0) {
+			devs[(*devs_len)++] = strdup(dirname);
 		}
 	}
-	if (closedir(dir))
-		goto err_closedir;
-	return 0;
-err_opendir:
-	fprintf(stderr, "Error: %s at diropen\n", __func__);
-	goto cleanup;
-err_realloc_dirname:
-	fprintf(stderr, "Error: %s at realloc dirname\n", __func__);
-	goto cleanup;
-err_get_files:
-	fprintf(stderr, "Error: %s at get_file\n", __func__);
-	goto cleanup;
-err_realloc_files:
-	fprintf(stderr, "Error: %s at realloc files\n", __func__);
-	goto cleanup;
-err_closedir:
-	fprintf(stderr, "Error: %s at closedir\n", __func__);
-	/* fall through */
-cleanup:
-	if (dir != NULL)
+	ret = 0;
+out:
+	if (dir)
 		closedir(dir);
-	return -1;
-}
-
-int find_devices(struct file** devs) {
-	size_t devs_cap = 0;
-	size_t devs_len = 0;
-	char dirname[PATH_MAX] = "/sys/devices";
-	if (get_files(devs, &devs_cap, &devs_len, dirname))
-		goto err_get_files;
-	int bness_devs_len = 0;
-	for (size_t i = 0; i < devs_len; i++) {
-		if (strcmp((*devs)[i].filename, "brightness") == 0)
-			(*devs)[bness_devs_len++] = (*devs)[i];
-		else
-			file_destroy(&(*devs)[i]);
-	}
-	*devs = realloc(*devs, sizeof(**devs) * bness_devs_len);
-	if (*devs == NULL)
-		goto err_realloc;
-	return bness_devs_len;
-err_get_files:
-	fprintf(stderr, "Error: %s at get_files\n", __func__);
-	goto cleanup;
-err_realloc:
-	fprintf(stderr, "Error: %s at realloc\n", __func__);
-	/* fall through */
-cleanup:
-	for (size_t i = 0; i < devs_len; i++)
-		file_destroy(&(*devs)[i]);
-	if (*devs != NULL) {
-		free(*devs);
-		*devs = NULL;
-	}
-	return -1;
+	return ret;
 }
 
 int readfilenstr(char* dest, const size_t n, const char* const path) {
+	int fdata_len = -1;
 	FILE* file = fopen(path, "rb");
-	if (file == NULL)
-		goto err_fopen;
+	if (file == NULL) {
+		fprintf(stderr, "Error: %s at fopen\n", __func__);
+		goto out;
+	}
 	fseek(file, 0, SEEK_END);
 	int fdata_size = ftell(file);
-	if (fseek(file, 0, SEEK_SET))
-		goto err_fseek;
-	int fdata_len = fread(dest, 1, n - 1, file);
+	if (fseek(file, 0, SEEK_SET)) {
+		fprintf(stderr, "Error: %s at fseek\n", __func__);
+		goto out;
+	}
+	fdata_len = fread(dest, 1, n - 1, file);
 	dest[fdata_len] = '\0';
-	if (fclose(file))
-		goto err_fclose;
-	return fdata_len;
-err_fopen:
-	fprintf(stderr, "Error: %s at fopen\n", __func__);
-	goto cleanup;
-err_fseek:
-	fprintf(stderr, "Error: %s at fseek\n", __func__);
-	goto cleanup;
-err_fclose:
-	fprintf(stderr, "Error: %s at fclose\n", __func__);
-	goto cleanup;
-cleanup:
-	if (file != NULL)
+out:
+	if (file)
 		fclose(file);
-	return -1;
+	return fdata_len;
 }
 
-int iswspace(char c) {
+int iswspace(const char c) {
 	if (c == ' ') return 0;
 	if (c == '\t') return 0;
 	if (c == '\n') return 0;
@@ -243,172 +143,149 @@ char* strtrimr(char* str) {
 	return str;
 }
 
-void print_devs_info(struct file** const devs,
-					 const size_t devs_len,
-					 const struct args* const args) {
-	char buff[BUFF_SIZE];
+void devs_print_info(char** const devs,
+		     const size_t devs_len,
+		     const struct args* const args) {
+	char path[PATH_MAX];
+	char buff0[BUFF_SIZE];
+	char buff1[BUFF_SIZE];
 	int dname_strmaxlen = 0;
 	int bness_strmaxlen = 0;
-	for (size_t i = 0; i < devs_len; i++) {
-		int dname_len = strlen((*devs)[i].basename);
+	for (int i = 0; i < devs_len; i++) {
+		int dname_len = strlen(basename(devs[i]));
 		if (args->flags & FLAG_V)
-			dname_len = strlen((*devs)[i].path);
+			dname_len = strlen(devs[i]);
 		if (dname_strmaxlen < dname_len)
 			dname_strmaxlen = dname_len;
-		char path[PATH_MAX];
-		snprintf(path, PATH_MAX, "%s/%s", (*devs)[i].path, "brightness");
-		if (readfilenstr(buff, BUFF_SIZE, path) == -1)
-			goto err_readfilenstr_strmaxlen;
-		int bness_len = strlen(strtrimr(buff));
+		snprintf(path, PATH_MAX, "%s/%s", devs[i], "brightness");
+		if (readfilenstr(buff0, BUFF_SIZE, path) == -1) {
+			fprintf(stderr, "Error: %s at strmaxlen\n", __func__);
+			return;
+		}
+		int bness_len = strlen(strtrimr(buff0));
 		if (bness_strmaxlen < bness_len)
 			bness_strmaxlen = bness_len;
 	}
-	for (size_t i = 0; i < devs_len; i++) {
-		printf("%3zu ", i + 1);
-		char* dname = (*devs)[i].basename;
+	for (int i = 0; i < devs_len; i++) {
+		char* dname = basename(devs[i]);
 		if (args->flags & FLAG_V)
-			dname = (*devs)[i].path;
-		printf("%-*s ", dname_strmaxlen, dname);
-		char path[PATH_MAX];
-		snprintf(path, PATH_MAX, "%s/%s", (*devs)[i].path, "brightness");
-		if (readfilenstr(buff, BUFF_SIZE, path) == -1)
-			goto err_readfilenstr_bness;
-		const char* const bness = strtrimr(buff);
-		printf("%-*s ", bness_strmaxlen, bness);
-		snprintf(path, PATH_MAX, "%s/%s", (*devs)[i].path, "max_brightness");
-		if (readfilenstr(buff, BUFF_SIZE, path) == -1)
-			goto err_readfilenstr_maxbness;
-		const char* const maxbness = strtrimr(buff);
-		printf("%s\n", maxbness);
+			dname = devs[i];
+		snprintf(path, PATH_MAX, "%s/%s", devs[i], "brightness");
+		if (readfilenstr(buff0, BUFF_SIZE, path) == -1) {
+			fprintf(stderr, "Error: %s at bness\n", __func__);
+			return;
+		}
+		char* bness = strtrimr(buff0);
+		snprintf(path, PATH_MAX, "%s/%s", devs[i], "max_brightness");
+		if (readfilenstr(buff1, BUFF_SIZE, path) == -1) {
+			fprintf(stderr, "Error: %s at maxbness\n", __func__);
+			return;
+		}
+		char* maxbness = strtrimr(buff1);
+		printf("%3d %-*s %-*s %s\n",
+		       i + 1,
+		       dname_strmaxlen, dname,
+		       bness_strmaxlen, bness,
+		       maxbness);
 	}
-	return;
-err_readfilenstr_strmaxlen:
-	fprintf(stderr, "Error: %s at strmaxlen\n", __func__);
-	return;
-err_readfilenstr_bness:
-	fprintf(stderr, "Error: %s at bness\n", __func__);
-	return;
-err_readfilenstr_maxbness:
-	fprintf(stderr, "Error: %s at maxbness\n", __func__);
 }
 
 int main(int argc, char** argv) {
-	int ret = 0;
-	struct file* devs = NULL;
-	int devs_len = 0;
-
-
+	int ret = 1;
 	struct args args = {};
-	if (args_create(&args, argc, argv))
-		goto err_args_create;
-
-
+	args_create(&args, argc, argv);
 	if (args.flags & FLAG_H) {
 		puts(HELP);
-		goto cleanup;
+		ret = 0;
+		goto out;
 	}
 
 
-	devs_len = find_devices(&devs);
-	if (devs_len == -1)
-		goto err_find_devices;
-	if (devs_len == 0)
-		goto err_devs_len;
+	char* devs[BUFF_SIZE];
+	int devs_cap = 0;
+	int devs_len = 0;
+	char dirname[PATH_MAX] = "/sys/devices";
+	if (get_devs(devs, &devs_cap, &devs_len, dirname)) {
+		fprintf(stderr, "Failed to find devices\n");
+		goto out;
+	}
+	if (devs_len == 0) {
+		fprintf(stderr, "No devices found\n");
+		goto out;
+	}
 	if (args.id == NULL) {
-		print_devs_info(&devs, devs_len, &args);
-		goto cleanup;
+		devs_print_info(devs, devs_len, &args);
+		ret = 0;
+		goto out;
 	}
-	if (args.val == NULL)
-		goto err_args_val;
+	if (args.val == NULL) {
+		fprintf(stderr, "Missing second parameter\n");
+		goto out;
+	}
 
 
 	int id = strtol(args.id, NULL, 10);
-	struct file target_dev;
-	if (id < 0 || id > devs_len)
-		goto err_id_range;
+	if (id < 0 || id > devs_len) {
+		fprintf(stderr, "Id out of range\n");
+		goto out;
+	}
+	char* target_dev;
 	if (id == 0) {
 		int i = 0;
 		for (; i < devs_len; i++) {
-			if (strstr(devs[i].basename, args.id) != NULL)
+			if (strstr(basename(devs[i]), args.id) != NULL)
 				break;
 		}
-		if (i == devs_len)
-			goto err_dev_match;
+		if (i == devs_len) {
+			fprintf(stderr, "Could not match with device name\n");
+			goto out;
+		}
 		target_dev = devs[i];
 	} else {
 		target_dev = devs[id - 1];
 	}
 	char bness_path[PATH_MAX];
-	snprintf(bness_path, PATH_MAX, "%s/%s", target_dev.path, "brightness");
+	snprintf(bness_path, PATH_MAX, "%s/%s", target_dev, "brightness");
 
 
 	uid_t euid = geteuid();
-	if (seteuid(0))
-		goto err_seteuid_to_root;
+	if (seteuid(0)) {
+		fprintf(stderr, "Insufficient privileges (try sudo)\n");
+		goto out;
+	}
 	FILE* file = fopen(bness_path, "w");
-	if (file == NULL)
-		goto err_fopen;
-	if (fwrite(args.val, 1, strlen(args.val), file) == 0)
-		goto err_fwrite;
-	if (fclose(file))
-		goto err_fclose;
-	if (seteuid(euid))
-		goto err_seteuid_to_user;
+	if (file == NULL) {
+		goto out;
+		fprintf(stderr, "Failed to open (%s)\n", bness_path);
+	}
+	if (fwrite(args.val, 1, strlen(args.val), file) == 0) {
+		fprintf(stderr, "Failed to write to (%s)\n", bness_path);
+		goto out;
+	}
+	if (fclose(file)) {
+		fprintf(stderr, "Failed to close (%s)\n", bness_path);
+		goto out;
+	}
+	if (seteuid(euid)) {
+		fprintf(stderr, "Failed to drop user privileges\n");
+		goto out;
+	}
 
 
 	char bness[BUFF_SIZE];
-	if (readfilenstr(bness, BUFF_SIZE, bness_path) == -1)
-		goto err_readfilenstr;
-	printf("%s: %s", target_dev.basename, bness);
-
-
-	goto cleanup;
-err_args_create:
-	fprintf(stderr, "Failed to handle command line arguments\n");
-	goto err_cleanup;
-err_find_devices:
-	fprintf(stderr, "Failed to find devices\n");
-	goto err_cleanup;
-err_devs_len:
-	fprintf(stderr, "No devices found\n");
-	goto err_cleanup;
-err_args_val:
-	fprintf(stderr, "Missing second parameter\n");
-	goto err_cleanup;
-err_id_range:
-	fprintf(stderr, "Id out of range\n");
-	goto err_cleanup;
-err_dev_match:
-	fprintf(stderr, "Could not match with device name\n");
-	goto err_cleanup;
-err_seteuid_to_root:
-	fprintf(stderr, "Insufficient privileges\n");
-	goto err_cleanup;
-err_fopen:
-	fprintf(stderr, "Failed to open (%s)\n", bness_path);
-	goto err_cleanup;
-err_fwrite:
-	fprintf(stderr, "Failed to write to (%s)\n", bness_path);
-	goto err_cleanup;
-err_fclose:
-	fprintf(stderr, "Failed to close (%s)\n", bness_path);
-	goto err_cleanup;
-err_seteuid_to_user:
-	fprintf(stderr, "Failed to drop user privileges\n");
-	goto err_cleanup;
-err_readfilenstr:
-	fprintf(stderr, "Failed to read (%s)\n", bness_path);
-	/* fall through */
-err_cleanup:
-	ret = 1;
-	/* fall through */
-cleanup:
-	for (int i = 0; i < devs_len; i++)
-		file_destroy(&devs[i]);
-	if (devs != NULL) {
-		free(devs);
-		devs = NULL;
+	if (readfilenstr(bness, BUFF_SIZE, bness_path) == -1) {
+		fprintf(stderr, "Failed to read (%s)\n", bness_path);
+		goto out;
 	}
-	args_destroy(&args);
+	if (args.flags & FLAG_V)
+		printf("%s %s", target_dev, bness);
+	else
+		printf("%s %s", basename(target_dev), bness);
+
+
+	ret = 0;
+out:
+	for (int i = 0; i < devs_len; i++)
+		free(devs[i]);
 	return ret;
 }
