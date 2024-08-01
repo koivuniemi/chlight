@@ -57,27 +57,26 @@ struct args {
 };
 
 
-void args_create(struct args* args, const int argc, char** const argv) {
-	args->flags = 0;
-	args->id = NULL;
-	args->val = NULL;
+struct args args_create(const int argc, char** const argv) {
+	struct args args = {0, NULL, NULL};
 	for (size_t i = 1; i < argc; i++) {
 		if (!strncmp("-h", argv[i], 2) || !strncmp("--help", argv[i], 6)) {
-			args->flags |= FLAG_H;
+			args.flags |= FLAG_H;
 			continue;
 		}
 		if (!strncmp("-v", argv[i], 2) || !strncmp("--verbose", argv[i], 9)) {
-			args->flags |= FLAG_V;
+			args.flags |= FLAG_V;
 			continue;
 		}
-		if (args->id == NULL)
-			args->id = argv[i];
-		else if (args->val == NULL)
-			args->val = argv[i];
+		if (args.id == NULL)
+			args.id = argv[i];
+		else if (args.val == NULL)
+			args.val = argv[i];
 	}
+	return args;
 }
 
-int get_devs(char** devs, int* devs_cap, int* devs_len, char* dirname) {
+int get_devs(char** devs, int* devs_len, char* dirname) {
 	int ret = 1;
 	DIR* dir = opendir(dirname);
 	if (!dir) {
@@ -91,10 +90,8 @@ int get_devs(char** devs, int* devs_cap, int* devs_len, char* dirname) {
 			size_t dirname_oglen = strlen(dirname);
 			strcat(dirname, "/");
 			strcat(dirname, e->d_name);
-			if (get_devs(devs, devs_cap, devs_len, dirname)) {
-				fprintf(stderr, "Error: %s at get_file\n", __func__);
+			if (get_devs(devs, devs_len, dirname))
 				goto out;
-			}
 			dirname[dirname_oglen] = '\0';
 		} else if (strcmp(e->d_name, "brightness") == 0) {
 			devs[(*devs_len)++] = strdup(dirname);
@@ -182,7 +179,7 @@ void devs_print_info(char** const devs,
 			return;
 		}
 		char* maxbness = strtrimr(buff1);
-		printf("%3d %-*s %-*s %s\n",
+		printf("%4d %-*s %-*s %s\n",
 		       i + 1,
 		       dname_strmaxlen, dname,
 		       bness_strmaxlen, bness,
@@ -192,8 +189,7 @@ void devs_print_info(char** const devs,
 
 int main(int argc, char** argv) {
 	int ret = 1;
-	struct args args = {};
-	args_create(&args, argc, argv);
+	struct args args = args_create(argc, argv);
 	if (args.flags & FLAG_H) {
 		puts(HELP);
 		ret = 0;
@@ -202,10 +198,9 @@ int main(int argc, char** argv) {
 
 
 	char* devs[BUFF_SIZE];
-	int devs_cap = 0;
 	int devs_len = 0;
 	char dirname[PATH_MAX] = "/sys/devices";
-	if (get_devs(devs, &devs_cap, &devs_len, dirname)) {
+	if (get_devs(devs, &devs_len, dirname)) {
 		fprintf(stderr, "Failed to find devices\n");
 		goto out;
 	}
