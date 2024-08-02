@@ -25,7 +25,6 @@
 #include <dirent.h>
 #include <libgen.h>
 #include <linux/limits.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,7 +58,7 @@ struct args {
 
 struct args args_create(const int argc, char** const argv) {
 	struct args args = {0, NULL, NULL};
-	for (size_t i = 1; i < argc; i++) {
+	for (int i = 1; i < argc; i++) {
 		if (!strncmp("-h", argv[i], 2) || !strncmp("--help", argv[i], 6)) {
 			args.flags |= FLAG_H;
 			continue;
@@ -87,7 +86,7 @@ int get_devs(char** devs, int* devs_len, char* dirname) {
 		if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, ".."))
 			continue;
 		if (e->d_type == DT_DIR) {
-			size_t dirname_oglen = strlen(dirname);
+			int dirname_oglen = strlen(dirname);
 			strcat(dirname, "/");
 			strcat(dirname, e->d_name);
 			if (get_devs(devs, devs_len, dirname))
@@ -104,7 +103,7 @@ out:
 	return ret;
 }
 
-int readfilenstr(char* dest, const size_t n, const char* const path) {
+int read_file_str(char* dest, const int n, const char* const path) {
 	int fdata_len = -1;
 	FILE* file = fopen(path, "rb");
 	if (file == NULL) {
@@ -125,24 +124,17 @@ out:
 	return fdata_len;
 }
 
-int iswspace(const char c) {
-	if (c == ' ') return 0;
-	if (c == '\t') return 0;
-	if (c == '\n') return 0;
-	return 1;
-}
-
-char* strtrimr(char* str) {
+char* str_trim_r(char* str) {
 	char* end = str + strlen(str) - 1;
-	while (!iswspace(*end))
+	while (*end == ' ' || *end == '\n' || *end == '\t')
 		end--;
 	*(end + 1) = '\0';
 	return str;
 }
 
 void devs_print_info(char** const devs,
-		     const size_t devs_len,
-		     const struct args* const args) {
+		const int devs_len,
+		const struct args* const args) {
 	char path[PATH_MAX];
 	char buff0[BUFF_SIZE];
 	char buff1[BUFF_SIZE];
@@ -155,11 +147,11 @@ void devs_print_info(char** const devs,
 		if (dname_strmaxlen < dname_len)
 			dname_strmaxlen = dname_len;
 		snprintf(path, PATH_MAX, "%s/%s", devs[i], "brightness");
-		if (readfilenstr(buff0, BUFF_SIZE, path) == -1) {
+		if (read_file_str(buff0, BUFF_SIZE, path) == -1) {
 			fprintf(stderr, "Error: %s at strmaxlen\n", __func__);
 			return;
 		}
-		int bness_len = strlen(strtrimr(buff0));
+		int bness_len = strlen(str_trim_r(buff0));
 		if (bness_strmaxlen < bness_len)
 			bness_strmaxlen = bness_len;
 	}
@@ -168,17 +160,17 @@ void devs_print_info(char** const devs,
 		if (args->flags & FLAG_V)
 			dname = devs[i];
 		snprintf(path, PATH_MAX, "%s/%s", devs[i], "brightness");
-		if (readfilenstr(buff0, BUFF_SIZE, path) == -1) {
+		if (read_file_str(buff0, BUFF_SIZE, path) == -1) {
 			fprintf(stderr, "Error: %s at bness\n", __func__);
 			return;
 		}
-		char* bness = strtrimr(buff0);
+		char* bness = str_trim_r(buff0);
 		snprintf(path, PATH_MAX, "%s/%s", devs[i], "max_brightness");
-		if (readfilenstr(buff1, BUFF_SIZE, path) == -1) {
+		if (read_file_str(buff1, BUFF_SIZE, path) == -1) {
 			fprintf(stderr, "Error: %s at maxbness\n", __func__);
 			return;
 		}
-		char* maxbness = strtrimr(buff1);
+		char* maxbness = str_trim_r(buff1);
 		printf("%4d %-*s %-*s %s\n",
 		       i + 1,
 		       dname_strmaxlen, dname,
@@ -189,6 +181,9 @@ void devs_print_info(char** const devs,
 
 int main(int argc, char** argv) {
 	int ret = 1;
+	int devs_len = 0;
+
+
 	struct args args = args_create(argc, argv);
 	if (args.flags & FLAG_H) {
 		puts(HELP);
@@ -198,7 +193,6 @@ int main(int argc, char** argv) {
 
 
 	char* devs[BUFF_SIZE];
-	int devs_len = 0;
 	char dirname[PATH_MAX] = "/sys/devices";
 	if (get_devs(devs, &devs_len, dirname)) {
 		fprintf(stderr, "Failed to find devices\n");
@@ -268,7 +262,7 @@ int main(int argc, char** argv) {
 
 
 	char bness[BUFF_SIZE];
-	if (readfilenstr(bness, BUFF_SIZE, bness_path) == -1) {
+	if (read_file_str(bness, BUFF_SIZE, bness_path) == -1) {
 		fprintf(stderr, "Failed to read (%s)\n", bness_path);
 		goto out;
 	}
