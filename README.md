@@ -1,5 +1,6 @@
 # chlight
 'Change Light' Linux utility to change brightness of ALL devices e.g. monitor, keyboard, mouse, caps-lock etc.
+
 ![Example](usage_example.png)
 ```
 Usage: chlight [option] [index|name] [brightness]
