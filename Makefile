@@ -1,2 +1,2 @@
 default:
-	clang -O3 main.c -o chlight
+	gcc -O3 main.c -o chlight
